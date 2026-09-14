@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, WandSparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { App, Button, Checkbox, Drawer, Empty, Image, Input, Modal, Tag, Tooltip, Typography } from "antd";
 import localforage from "localforage";
@@ -15,9 +15,10 @@ import { modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } f
 import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
-import { requestEdit, requestGeneration } from "@/services/api/image";
+import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { useAssetStore } from "@/stores/use-asset-store";
+import { useCopyText } from "@/hooks/use-copy-text";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
 import type { ReferenceImage } from "@/types/image";
 import i18n from "@/i18n";
@@ -65,6 +66,7 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
 const LOG_STORE_KEY = "infinite-canvas:image_generation_logs";
+const OPTIMIZE_MODEL_KEY = "infinite-canvas:image_optimize_model";
 const RESULT_ACTION_BUTTON_CLASS = "min-w-0 px-1.5 [&_.ant-btn-icon]:shrink-0 [&>span:last-child]:min-w-0 [&>span:last-child]:truncate";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
 
@@ -95,6 +97,18 @@ export default function ImagePage() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [isReferenceDragActive, setIsReferenceDragActive] = useState(false);
     const [autoRunToken, setAutoRunToken] = useState(0);
+    const [optimizeOpen, setOptimizeOpen] = useState(false);
+    const [optimizeModel, setOptimizeModel] = useState(() => {
+        try {
+            return window.localStorage.getItem(OPTIMIZE_MODEL_KEY) || "";
+        } catch {
+            return "";
+        }
+    });
+    const [optimizeResult, setOptimizeResult] = useState("");
+    const [optimizing, setOptimizing] = useState(false);
+    const optimizeControllerRef = useRef<AbortController | null>(null);
+    const copyText = useCopyText();
     const imageCommand = useWorkbenchAgentStore((state) => state.imageCommand);
     const clearImageCommand = useWorkbenchAgentStore((state) => state.clearImageCommand);
     const updateAgentTask = useWorkbenchAgentStore((state) => state.updateTask);
@@ -102,6 +116,7 @@ export default function ImagePage() {
     const agentTaskIdRef = useRef<string | undefined>(undefined);
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
+    const activeOptimizeModel = optimizeModel || effectiveConfig.model || effectiveConfig.textModel || "";
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(10, Number(config.count) || 1));
 
@@ -114,6 +129,8 @@ export default function ImagePage() {
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    useEffect(() => () => optimizeControllerRef.current?.abort(), []);
 
     const addReferences = async (files?: FileList | null) => {
         const imageFiles = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
@@ -145,6 +162,77 @@ export default function ImagePage() {
         } catch {
             message.error(t("imageWorkbench.clipboardEmpty"));
         }
+    };
+
+    const handleOptimizeModelChange = (value: string) => {
+        setOptimizeModel(value);
+        try {
+            window.localStorage.setItem(OPTIMIZE_MODEL_KEY, value);
+        } catch {
+            // Ignore storage failures; the selection still works for this session.
+        }
+    };
+
+    const openOptimizeModal = () => {
+        if (!prompt.trim()) {
+            message.error(t("imageWorkbench.promptRequired"));
+            return;
+        }
+        setOptimizeOpen(true);
+    };
+
+    const closeOptimizeModal = () => {
+        optimizeControllerRef.current?.abort();
+        optimizeControllerRef.current = null;
+        setOptimizing(false);
+        setOptimizeOpen(false);
+    };
+
+    const runOptimize = async () => {
+        const text = prompt.trim();
+        if (!text) {
+            message.error(t("imageWorkbench.promptRequired"));
+            return;
+        }
+        if (optimizing) return;
+        const requestConfig = { ...effectiveConfig, model: activeOptimizeModel };
+        if (!activeOptimizeModel || !isAiConfigReady(requestConfig, activeOptimizeModel)) {
+            message.warning(t("workbench.configFirst"));
+            openConfigDialog(true);
+            return;
+        }
+        optimizeControllerRef.current?.abort();
+        const controller = new AbortController();
+        optimizeControllerRef.current = controller;
+        setOptimizing(true);
+        setOptimizeResult("");
+        try {
+            const answer = await requestImageQuestion(
+                requestConfig,
+                [
+                    { role: "system", content: t("imageWorkbench.optimizeSystemPrompt") },
+                    { role: "user", content: text },
+                ],
+                (delta) => {
+                    if (!controller.signal.aborted) setOptimizeResult(delta);
+                },
+                { signal: controller.signal },
+            );
+            if (!controller.signal.aborted) setOptimizeResult(answer);
+        } catch (error) {
+            if (!controller.signal.aborted) message.error(error instanceof Error ? error.message : t("workbench.generationFailed"));
+        } finally {
+            if (optimizeControllerRef.current === controller) optimizeControllerRef.current = null;
+            setOptimizing(false);
+        }
+    };
+
+    const replaceWithOptimized = () => {
+        const text = optimizeResult.trim();
+        if (!text) return;
+        setPrompt(text);
+        setOptimizeOpen(false);
+        message.success(t("imageWorkbench.optimizeReplaced"));
     };
 
     const generate = async () => {
@@ -405,6 +493,9 @@ export default function ImagePage() {
                                         <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
                                             {t("workbench.viewAssets")}
                                         </Button>
+                                        <Button size="small" icon={<WandSparkles className="size-3.5" />} onClick={openOptimizeModal}>
+                                            {t("imageWorkbench.optimize")}
+                                        </Button>
                                     </div>
                                 </div>
                                 <Input.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={7} placeholder={t("imageWorkbench.promptPlaceholder")} />
@@ -549,6 +640,51 @@ export default function ImagePage() {
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
             <Modal title={t("workbench.deleteLogs")} open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={deleteSelectedLogs} okText={t("common.delete")} okButtonProps={{ danger: true }} cancelText={t("common.cancel")}>
                 {t("workbench.deleteLogsConfirm", { count: selectedLogIds.length })}
+            </Modal>
+            <Modal
+                title={t("imageWorkbench.optimizeTitle")}
+                open={optimizeOpen}
+                onCancel={closeOptimizeModal}
+                maskClosable={!optimizing}
+                width={640}
+                destroyOnHidden
+                footer={
+                    <div className="flex flex-wrap justify-end gap-2">
+                        {optimizing ? (
+                            <Button danger onClick={() => optimizeControllerRef.current?.abort()}>
+                                {t("imageWorkbench.optimizeStop")}
+                            </Button>
+                        ) : (
+                            <>
+                                <Button disabled={!optimizeResult.trim()} onClick={() => copyText(optimizeResult.trim())}>
+                                    {t("common.copy")}
+                                </Button>
+                                <Button onClick={() => void runOptimize()}>{optimizeResult ? t("imageWorkbench.optimizeRetry") : t("imageWorkbench.optimizeStart")}</Button>
+                                <Button type="primary" disabled={!optimizeResult.trim()} onClick={replaceWithOptimized}>
+                                    {t("imageWorkbench.optimizeReplace")}
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                }
+            >
+                <div className="space-y-4">
+                    <div>
+                        <div className="mb-2 text-sm font-semibold">{t("imageWorkbench.optimizeModel")}</div>
+                        <ModelPicker config={effectiveConfig} value={activeOptimizeModel} onChange={handleOptimizeModelChange} capability="text" fullWidth onMissingConfig={() => openConfigDialog(false)} />
+                    </div>
+                    <div>
+                        <div className="mb-2 text-sm font-semibold">{t("imageWorkbench.optimizeSource")}</div>
+                        <div className="thin-scrollbar max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm dark:border-stone-800 dark:bg-stone-900">{prompt}</div>
+                    </div>
+                    <div>
+                        <div className="mb-2 text-sm font-semibold">{t("imageWorkbench.optimizeResult")}</div>
+                        <div className="thin-scrollbar max-h-72 min-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg border border-stone-200 bg-background p-3 text-sm dark:border-stone-800">
+                            {optimizeResult ? optimizeResult : <span className="text-stone-400 dark:text-stone-500">{optimizing ? t("workbench.generating") : t("imageWorkbench.optimizeResultEmpty")}</span>}
+                            {optimizing ? <LoaderCircle className="ml-2 inline size-4 animate-spin text-stone-400" /> : null}
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
