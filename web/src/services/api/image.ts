@@ -97,6 +97,27 @@ type GeminiPayload = {
 type GeminiStreamState = { buffer: string; text: string; toolCalls: ResponseToolCall[]; error?: string };
 type RequestOptions = { signal?: AbortSignal };
 
+/** OpenAI Chat Completions chunk (streaming) / payload (non-streaming). Used by the fallback endpoint. */
+type ChatCompletionChoice = { delta?: { content?: string }; message?: { content?: string } };
+type ChatCompletionPayload = {
+    choices?: ChatCompletionChoice[];
+    error?: { message?: string };
+    code?: number;
+    msg?: string;
+};
+type ChatStreamState = { buffer: string; text: string; error?: string };
+
+/** Carries the HTTP status so callers can tell "endpoint missing" apart from "request rejected". */
+class HttpStatusError extends Error {
+    constructor(
+        message: string,
+        readonly status: number,
+    ) {
+        super(message);
+        this.name = "HttpStatusError";
+    }
+}
+
 const QUALITY_BASE: Record<string, number> = {
     low: 1024,
     medium: 2048,
@@ -322,6 +343,9 @@ function readAxiosError(error: unknown, fallback: string) {
         return error.message || fallback;
     }
     if (error instanceof DOMException && error.name === "AbortError") return apiText("requestCanceled");
+    // A browser fetch that never reached the network only carries its raw English TypeError message
+    // ("Failed to fetch"), so translate it into something actionable instead of leaking it into the UI.
+    if (isFetchNetworkError(error)) return apiText("networkBlocked");
     return error instanceof Error ? readApiErrorMessage(error.message) || error.message : fallback;
 }
 
@@ -374,6 +398,12 @@ function geminiHeaders(config: Pick<AiConfig, "apiKey">) {
 }
 
 function withSystemMessage<T extends ResponseInputMessage>(config: AiConfig, messages: T[]): ResponseInputMessage[] {
+    const systemPrompt = config.systemPrompt.trim();
+    return systemPrompt ? [{ role: "system" as const, content: systemPrompt }, ...messages] : messages;
+}
+
+/** Chat Completions accepts the same role/content shape as AiTextMessage; only the system prompt is prepended. */
+function toChatMessages(config: AiConfig, messages: AiTextMessage[]): AiTextMessage[] {
     const systemPrompt = config.systemPrompt.trim();
     return systemPrompt ? [{ role: "system" as const, content: systemPrompt }, ...messages] : messages;
 }
@@ -457,13 +487,8 @@ async function readFetchError(response: Response, fallback: string) {
 }
 
 function consumeResponseStreamBlock(block: string, state: ResponseStreamState, onDelta?: (text: string) => void) {
-    const data = block
-        .split(/\r?\n/)
-        .filter((line) => line.startsWith("data:"))
-        .map((line) => line.slice(5).replace(/^ /, ""))
-        .join("\n")
-        .trim();
-    if (!data || data === "[DONE]") return;
+    const data = readSseData(block);
+    if (!data) return;
     const event = JSON.parse(data) as Record<string, unknown>;
     const type = stringValue(event.type);
     const errorMessage = responseErrorMessage(event);
@@ -483,18 +508,48 @@ function consumeResponseStreamBlock(block: string, state: ResponseStreamState, o
     }
 }
 
-function consumeResponseStreamText(state: ResponseStreamState, text: string, onDelta?: (text: string) => void, flush = false) {
+/** Split an SSE byte stream on blank lines and hand each complete event block to `consume`. */
+function splitSseStream(state: { buffer: string }, text: string, consume: (block: string) => void, flush = false) {
     state.buffer += text;
     for (;;) {
         const match = state.buffer.match(/\r?\n\r?\n/);
         if (!match) break;
         const index = match.index ?? 0;
-        consumeResponseStreamBlock(state.buffer.slice(0, index), state, onDelta);
+        consume(state.buffer.slice(0, index));
         state.buffer = state.buffer.slice(index + match[0].length);
     }
     if (flush && state.buffer.trim()) {
-        consumeResponseStreamBlock(state.buffer, state, onDelta);
+        consume(state.buffer);
         state.buffer = "";
+    }
+}
+
+/** Read the `data:` lines of one SSE event block, ignoring the `[DONE]` terminator. */
+function readSseData(block: string) {
+    const data = block
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).replace(/^ /, ""))
+        .join("\n")
+        .trim();
+    return data && data !== "[DONE]" ? data : "";
+}
+
+function consumeResponseStreamText(state: ResponseStreamState, text: string, onDelta?: (text: string) => void, flush = false) {
+    splitSseStream(state, text, (block) => consumeResponseStreamBlock(block, state, onDelta), flush);
+}
+
+function consumeChatStreamBlock(block: string, state: ChatStreamState, onDelta?: (text: string) => void) {
+    const data = readSseData(block);
+    if (!data) return;
+    const event = JSON.parse(data) as ChatCompletionPayload;
+    const errorMessage = responseErrorMessage(event);
+    if (errorMessage) state.error = errorMessage;
+    const choice = event.choices?.[0];
+    const delta = choice?.delta?.content ?? choice?.message?.content;
+    if (typeof delta === "string" && delta) {
+        state.text += delta;
+        onDelta?.(state.text);
     }
 }
 
@@ -505,7 +560,7 @@ async function requestStreamingResponse(config: AiConfig, body: Record<string, u
         body: JSON.stringify({ ...body, stream: true }),
         signal: options?.signal,
     });
-    if (!response.ok) throw new Error(await readFetchError(response, apiText("requestFailed")));
+    if (!response.ok) throw new HttpStatusError(await readFetchError(response, apiText("requestFailed")), response.status);
     if (!response.body) {
         const payload = (await response.json()) as ResponseApiPayload;
         validateResponsePayload(payload);
@@ -527,6 +582,53 @@ async function requestStreamingResponse(config: AiConfig, body: Record<string, u
     validateResponsePayload(state.payload);
     const result = parseToolResponse(state.payload);
     return { ...result, content: state.text || result.content };
+}
+
+/**
+ * Fallback text call via POST /v1/chat/completions.
+ * Most OpenAI-compatible providers implement Chat Completions but not the newer Responses API.
+ */
+async function requestChatCompletions(config: AiConfig, messages: AiTextMessage[], onDelta?: (text: string) => void, options?: RequestOptions): Promise<string> {
+    const response = await fetch(aiApiUrl(config, "/chat/completions"), {
+        method: "POST",
+        headers: { ...aiHeaders(config, "application/json"), Accept: "text/event-stream" },
+        body: JSON.stringify({ model: config.model, messages, stream: true }),
+        signal: options?.signal,
+    });
+    if (!response.ok) throw new HttpStatusError(await readFetchError(response, apiText("requestFailed")), response.status);
+    if (!response.body) {
+        const payload = (await response.json()) as ChatCompletionPayload;
+        validateResponsePayload(payload);
+        return payload.choices?.[0]?.message?.content || "";
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const state: ChatStreamState = { buffer: "", text: "" };
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        splitSseStream(state, decoder.decode(value, { stream: true }), (block) => consumeChatStreamBlock(block, state, onDelta));
+        if (state.error) throw new Error(state.error);
+    }
+    splitSseStream(state, decoder.decode(), (block) => consumeChatStreamBlock(block, state, onDelta), true);
+    if (state.error) throw new Error(state.error);
+    return state.text;
+}
+
+/**
+ * True only when the failure says the endpoint itself is unusable, so retrying another endpoint is worthwhile.
+ * Auth, rate-limit and bad-request failures are deliberately excluded: retrying those just hides the real cause.
+ */
+function isEndpointUnavailable(error: unknown) {
+    // Native fetch rejects with a TypeError ("Failed to fetch") when no response ever arrives, which is how
+    // many gateways fail on a path they do not implement: they answer without CORS headers or drop the socket.
+    if (isFetchNetworkError(error)) return true;
+    return error instanceof HttpStatusError && [404, 405, 501].includes(error.status);
+}
+
+/** Browser-native fetch network failure: Chrome "Failed to fetch", Firefox "NetworkError ...", Safari "Load failed". */
+function isFetchNetworkError(error: unknown) {
+    return error instanceof TypeError && /fetch|network|load failed/i.test(error.message);
 }
 
 function toGeminiBody(config: AiConfig, messages: ResponseInputMessage[], extra?: Record<string, unknown>) {
@@ -872,13 +974,27 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
             if (answer === apiText("noContent")) onDelta(answer);
             return answer;
         }
-        const answer = (await requestStreamingResponse(requestConfig, {
-            model: requestConfig.model,
-            input: toResponseInput(withSystemMessage(requestConfig, messages)),
-            ...(requestConfig.reasoningEffort === "auto" ? {} : { reasoning: { effort: requestConfig.reasoningEffort } }),
-        }, onDelta, options)).content || apiText("noContent");
-        if (answer === apiText("noContent")) onDelta(answer);
-        return answer;
+        // Track whether anything reached the caller: once text has streamed we must not retry,
+        // because a second attempt would duplicate the answer.
+        let streamed = false;
+        const trackDelta = (text: string) => {
+            if (text) streamed = true;
+            onDelta(text);
+        };
+        try {
+            const answer = (await requestStreamingResponse(requestConfig, {
+                model: requestConfig.model,
+                input: toResponseInput(withSystemMessage(requestConfig, messages)),
+                ...(requestConfig.reasoningEffort === "auto" ? {} : { reasoning: { effort: requestConfig.reasoningEffort } }),
+            }, trackDelta, options)).content || apiText("noContent");
+            if (answer === apiText("noContent")) onDelta(answer);
+            return answer;
+        } catch (error) {
+            if (streamed || options?.signal?.aborted || !isEndpointUnavailable(error)) throw error;
+            const answer = (await requestChatCompletions(requestConfig, toChatMessages(requestConfig, messages), onDelta, options)) || apiText("noContent");
+            if (answer === apiText("noContent")) onDelta(answer);
+            return answer;
+        }
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("requestFailed")));
     }
