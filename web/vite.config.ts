@@ -151,6 +151,10 @@ function devCorsProxy(): Plugin {
 
 export default defineConfig({
     base: process.env.VITE_BASE || "/",
+    server: {
+        // Allow the sandbox preview proxy host alongside localhost.
+        allowedHosts: [".e2b.app"],
+    },
     plugins: [react(), localPluginsManifest(), devCorsProxy()],
     resolve: {
         alias: {
