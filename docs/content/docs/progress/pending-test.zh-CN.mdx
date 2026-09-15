@@ -125,3 +125,5 @@ Canvas Agent 配置权限
 - 所有 4K 预设提交时均不应触发本地总像素或最长边限制；生成和编辑请求、调用脚本应收到所选像素尺寸。
 - 分辨率为自动时保留比例选择，比例为自动时禁用 W/H；手动输入 W/H 后，对齐开关仍应按原有方式工作。
 - Gemini 在质量为自动时，应将表中尺寸识别为对应的 1K / 2K / 4K；显式选择质量时维持原有优先级。视频尺寸设置应保持原有行为。
+
+- 文本优化跨域代理回退：此前在 https://image.wena.cc 使用 botcf.com 等未返回 CORS 头的网关时，优化提示词会在控制台报 `No 'Access-Control-Allow-Origin'`，涉及 `/v1/responses` 与 `/v1/chat/completions`。修复后跨域请求默认走同源 `/api/proxy?url=...` 转发（Vercel `api/proxy.js`、Cloudflare Pages `functions/api/proxy.ts`、Vite 开发服务器中间件均提供），并支持 SSE 流式转发；开启本地代理时仍优先走 `http://127.0.0.1:23210`。Docker（nginx）环境下 `/api/proxy` 返回带 CORS 的 404，前端自动回退到直连并展示可操作的 `networkBlocked` 提示，引导用户开启本地代理。验证：在 image.wena.cc 上配置 botcf.com 渠道且不开启本地代理，点击优化提示词应通过 `/api/proxy` 成功；模拟代理 404 时应回退并给出明确错误而非裸 CORS 报错。图片、视频、音频及模型列表请求同样受益于该回退。

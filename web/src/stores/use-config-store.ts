@@ -483,14 +483,39 @@ export function buildApiUrl(baseUrl: string, path: string) {
 export function normalizeLocalProxyUrl(value: string) {
     const trimmed = value.trim().replace(/\/+$/, "");
     if (!trimmed) return "";
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+    return /^https?:\/\/+/i.test(trimmed) ? trimmed : `http://${trimmed}`;
 }
 
-/** Prefix an outgoing request with the local forwarding proxy so the browser is not blocked by CORS. */
+/**
+ * Prefix an outgoing request with a proxy so the browser is not blocked by CORS.
+ * - If the user enabled the local proxy, use that (http://127.0.0.1:23210/https://...).
+ * - Otherwise, for cross-origin requests, fall back to the same-origin /api/proxy
+ *   endpoint which adds permissive CORS headers and forwards server-side.
+ * This fixes providers like botcf.com that do not return Access-Control-Allow-Origin.
+ */
 export function withLocalProxy(url: string) {
+    if (!/^https?:\/\//i.test(url)) return url;
+    if (url.includes("/api/proxy")) return url;
+
     const { proxyEnabled, proxyUrl } = useConfigStore.getState().config;
-    if (!proxyEnabled || !/^https?:\/\//i.test(url)) return url;
-    const base = normalizeLocalProxyUrl(proxyUrl);
-    if (!base || url.startsWith(`${base}/`)) return url;
-    return `${base}/${url}`;
+    if (proxyEnabled) {
+        const base = normalizeLocalProxyUrl(proxyUrl);
+        if (base) {
+            if (url.startsWith(`${base}/`)) return url;
+            return `${base}/${url}`;
+        }
+    }
+
+    if (typeof window !== "undefined") {
+        try {
+            const target = new URL(url);
+            const current = new URL(window.location.href);
+            if (target.origin !== current.origin) {
+                return `/api/proxy?url=${encodeURIComponent(url)}`;
+            }
+        } catch {
+            // Ignore URL parse errors and return original url.
+        }
+    }
+    return url;
 }
