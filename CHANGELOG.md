@@ -2,6 +2,8 @@
 
 ## Unreleased
 
++ [修复] 纯静态部署（Vercel Root Directory 为 `web`、GitHub Pages、未包含 functions 的 Cloudflare Pages、nginx 镜像）没有同源 `/api/proxy` 转发接口时，优化提示词等跨域请求不再卡在 405 并被误判成 Base URL 配错：前端会先探测站点是否真的提供该接口，缺失时直连模型服务，直连又被浏览器跨域拦截时明确提示开启本地代理，自定义调用脚本与图片、视频、音频请求同样受益。
+
 + [修复] 优化提示词等文本请求在 `botcf.com` 等未返回 CORS 头的网关上被浏览器拦截的问题：前端跨域请求默认走同源 `/api/proxy` 转发（Vercel / Cloudflare Pages / Vite 开发服务器），本地代理开启时仍优先走本地代理，Docker 等无同源代理的环境自动回退到直连；并为文本、图片、视频、音频及模型列表请求增加代理 404 时的直连回退，避免控制台出现 `No 'Access-Control-Allow-Origin'` 报错。
 
 ## v0.18.0 - 2026-09-07

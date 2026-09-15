@@ -127,3 +127,8 @@ Canvas Agent 配置权限
 - Gemini 在质量为自动时，应将表中尺寸识别为对应的 1K / 2K / 4K；显式选择质量时维持原有优先级。视频尺寸设置应保持原有行为。
 
 - 文本优化跨域代理回退：此前在 https://image.wena.cc 使用 botcf.com 等未返回 CORS 头的网关时，优化提示词会在控制台报 `No 'Access-Control-Allow-Origin'`，涉及 `/v1/responses` 与 `/v1/chat/completions`。修复后跨域请求默认走同源 `/api/proxy?url=...` 转发（Vercel `api/proxy.js`、Cloudflare Pages `functions/api/proxy.ts`、Vite 开发服务器中间件均提供），并支持 SSE 流式转发；开启本地代理时仍优先走 `http://127.0.0.1:23210`。Docker（nginx）环境下 `/api/proxy` 返回带 CORS 的 404，前端自动回退到直连并展示可操作的 `networkBlocked` 提示，引导用户开启本地代理。验证：在 image.wena.cc 上配置 botcf.com 渠道且不开启本地代理，点击优化提示词应通过 `/api/proxy` 成功；模拟代理 404 时应回退并给出明确错误而非裸 CORS 报错。图片、视频、音频及模型列表请求同样受益于该回退。
+
+- 静态部署缺少同源转发接口（405）：站点未部署 `/api/proxy`（Vercel 项目 Root Directory 设为 `web`、GitHub Pages、未包含 functions 目录的 Cloudflare Pages、纯 nginx 镜像）时，POST 会返回 `405 Method Not Allowed`，而提示却让人去检查 Base URL 和 API Key。现在前端在首次跨域请求时探测一次转发接口根路径（`GET /api/proxy` 必须回我们的身份 JSON）并按会话缓存结论，缺失时直接请求模型服务，直连同样被浏览器跨域拦截时给出 `apiErrors.proxyUnavailable` 的开启本地代理提示。验证：在 image.wena.cc 配置 botcf.com 渠道且关闭本地代理，点击优化提示词应显示开启本地代理的明确提示而不是裸 405；「本地代理」页签应出现警告和一键开启按钮；Root Directory 为仓库根目录的 Vercel 部署（带 `api/proxy.js`）应继续走同源转发；不支持 `/v1/responses` 的渠道仍应自动回退到 `/v1/chat/completions` 并展示接口自身的报错。图片、视频、音频、模型列表和自定义调用脚本请求同样使用该回退；Vite 开发服务器的 `/api/proxy` 根路径现在也返回身份 JSON，本地开发照常走转发。
+
+
+- Vercel 转发接口部署：新增与根目录 `api/proxy.js` 等价的 `web/api/proxy.js`，并把两个 `vercel.json` 的 SPA 回退改为跳过 `/api/*`，因此 Vercel 的 Root Directory 是仓库根还是 `web` 都能部署到同源转发接口。重新部署 image.wena.cc 后验证：`GET /api/proxy` 返回 `{"name":"infinite-canvas-cors-proxy",...}`（前端据此决定是否走转发），`POST /api/proxy?url=https://botcf.com/v1/models` 返回接口自身的 401 类 JSON 而不是 405，优化提示词不开本地代理即可成功；确实没有该函数的部署应显示开启本地代理的提示而不是裸 405。

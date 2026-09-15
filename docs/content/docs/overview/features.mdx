@@ -59,6 +59,7 @@ See [Third-party Prompt Sources](/docs/overview/third-party-prompt-repositories)
 - Export and import channel, model, generation, prompt-source, and WebDAV settings.
 - Store application data and API credentials locally in the browser.
 - Use WebDAV for optional cross-device synchronization.
+- Keep browser CORS errors away with the same-origin `/api/proxy` relay (Vercel, Cloudflare Pages, Vite dev server) or the local proxy; static hosting without that relay calls providers directly and points to the local proxy when CORS blocks the request.
 
 ## Current limitations
 

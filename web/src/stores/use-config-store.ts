@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
+import { checkSameOriginProxy, sameOriginProxyStatus } from "@/services/api/same-origin-proxy";
 
 export type ApiCallFormat = "openai" | "gemini";
 export type ModelCapability = "image" | "video" | "text" | "audio";
@@ -491,6 +492,7 @@ export function normalizeLocalProxyUrl(value: string) {
  * - If the user enabled the local proxy, use that (http://127.0.0.1:23210/https://...).
  * - Otherwise, for cross-origin requests, fall back to the same-origin /api/proxy
  *   endpoint which adds permissive CORS headers and forwards server-side.
+ * - When this deployment has no such endpoint, send the request straight to the provider.
  * This fixes providers like botcf.com that do not return Access-Control-Allow-Origin.
  */
 export function withLocalProxy(url: string) {
@@ -510,9 +512,11 @@ export function withLocalProxy(url: string) {
         try {
             const target = new URL(url);
             const current = new URL(window.location.href);
-            if (target.origin !== current.origin) {
-                return `/api/proxy?url=${encodeURIComponent(url)}`;
-            }
+            if (target.origin === current.origin) return url;
+            // The probe caches whether this host really serves /api/proxy; skip the relay once it says no.
+            if (sameOriginProxyStatus() === false) return url;
+            void checkSameOriginProxy();
+            return `/api/proxy?url=${encodeURIComponent(url)}`;
         } catch {
             // Ignore URL parse errors and return original url.
         }

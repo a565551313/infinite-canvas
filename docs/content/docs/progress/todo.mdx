@@ -7,3 +7,4 @@ description: Planned follow-up work
 
 - Replace the Claude Code CLI adapter with a Claude Agent SDK adapter and improve the tool queue, following the [Local Agent Integration Plan](/docs/progress/local-agent-integration-plan).
 - Add Skill installation from web search, Skill resource-file management, and controlled local-memory persistence.
+- Vercel: let deployments with Root Directory `web` serve the `/api/proxy` relay function too. Today any function file added to `web/api/` (`.js` or `.ts`, independent of the root `api/proxy.js` content) fails the Vercel build while removing the directory restores it; the root `api/proxy.js`, a `functions` entry and the `framework` preset were ruled out. Fetch the build log (`vercel inspect <deployment> --logs`) to tell a Monorepo + Vite preset limitation from a project setting, then re-add `web/api/proxy.js` (kept in sync with the root copy) and update `docs/content/docs/overview/quick-start.mdx`.

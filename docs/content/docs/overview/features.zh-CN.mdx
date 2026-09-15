@@ -160,7 +160,8 @@ Codex App 插件的安装与使用见 [Codex App 插件](/zh-CN/docs/overview/co
 
 - 当前版本不需要账号登录，也不再提供后台管理页面。
 - 配置与用户偏好弹窗支持多个 OpenAI 兼容渠道、默认模型、生成偏好和 WebDAV 同步设置。
-- 第三方提示词、WebDAV 和 AI 接口都由浏览器前端直连，不经过项目后端代理。
+- 第三方提示词、WebDAV 和 AI 接口都由浏览器前端直连，不经过项目后端代理；接口不允许跨域时可改用站点自带的 `/api/proxy` 转发（Vercel、Cloudflare Pages、Vite 开发服务器）或本地代理。
+- 纯静态部署（GitHub Pages、未包含 functions 的 Cloudflare Pages、nginx 镜像）没有 `/api/proxy` 转发接口，此时前端会直连模型服务，跨域被拦截时提示开启本地代理。
 
 ## 当前限制
 
