@@ -1,3 +1,7 @@
+/**
+ * Same-origin CORS relay for Vercel deployments whose Root Directory is the repository root.
+ * If the project is rooted at `web/`, Vercel cannot see this file, so `web/api/proxy.js` carries the same code.
+ */
 const CORS_HEADERS = {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "*",

@@ -11,6 +11,13 @@ To try the project, deploy or start the `web/` frontend.
 
 Import the repository into Vercel. The root `vercel.json` builds `web/`. AI requests are sent directly from the browser to your OpenAI-compatible endpoint, so no additional application server is required.
 
+Providers that do not return CORS headers (`botcf.com` and similar gateways) need the same-origin relay at `/api/proxy`. Only the repository-root layout ships it:
+
+- Root Directory `.` — the root `vercel.json` builds `web/`, and `api/proxy.js` is deployed as the relay.
+- Root Directory `web` — no relay is deployed; requests to `/api/proxy` fall through to the static site and fail with `405`, so turn on the local proxy in Settings instead. (Adding `web/api/*.js` to such a project currently breaks the Vercel build; see the todo list.)
+
+After deploying, open `https://<your-domain>/api/proxy`: it must answer `{"name":"infinite-canvas-cors-proxy",...}`. A page or a 404 means the relay is not deployed. Note that Vercel also caps how long a function may stream, so a very long answer can still be cut off; the local proxy has no such limit.
+
 ## Run locally
 
 ```bash

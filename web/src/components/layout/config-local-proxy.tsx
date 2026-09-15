@@ -1,10 +1,11 @@
-import { App, Button, Form, Input, Switch } from "antd";
+import { Alert, App, Button, Form, Input, Switch } from "antd";
 import { Copy, Network, Wifi } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useCopyText } from "@/hooks/use-copy-text";
 import { testLocalProxy } from "@/services/api/local-proxy";
+import { checkSameOriginProxy } from "@/services/api/same-origin-proxy";
 import { DEFAULT_LOCAL_PROXY_URL, LOCAL_PROXY_PACKAGE, normalizeLocalProxyUrl, useConfigStore } from "@/stores/use-config-store";
 
 export function ConfigLocalProxy() {
@@ -12,9 +13,21 @@ export function ConfigLocalProxy() {
     const { t } = useTranslation();
     const copyText = useCopyText();
     const [testing, setTesting] = useState(false);
+    const [sameOriginProxyMissing, setSameOriginProxyMissing] = useState(false);
     const config = useConfigStore((state) => state.config);
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const command = localProxyCommand(config.proxyUrl);
+
+    // Without the site's own /api/proxy relay, cross-origin providers only work when the local proxy forwards them.
+    useEffect(() => {
+        let active = true;
+        void checkSameOriginProxy().then((ok) => {
+            if (active) setSameOriginProxyMissing(!ok);
+        });
+        return () => {
+            active = false;
+        };
+    }, []);
 
     const testProxy = async () => {
         setTesting(true);
@@ -40,6 +53,19 @@ export function ConfigLocalProxy() {
                     </div>
                     <Switch checked={config.proxyEnabled} onChange={(checked) => updateConfig("proxyEnabled", checked)} />
                 </div>
+                {sameOriginProxyMissing && !config.proxyEnabled ? (
+                    <Alert
+                        className="mt-3"
+                        type="warning"
+                        showIcon
+                        message={t("config.proxy.sameOriginMissing")}
+                        action={
+                            <Button size="small" onClick={() => updateConfig("proxyEnabled", true)}>
+                                {t("config.proxy.enableNow")}
+                            </Button>
+                        }
+                    />
+                ) : null}
                 {config.proxyEnabled ? (
                     <>
                         <div className="mt-3 rounded-md bg-stone-100 px-3 py-2 dark:bg-stone-900">

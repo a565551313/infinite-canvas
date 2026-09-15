@@ -9,3 +9,4 @@ description: 当前项目后续值得处理的事项
 
 - 本地 Agent 接入后续：按[本地 Agent 接入规划](/zh-CN/docs/progress/local-agent-integration-plan)把 Claude Code CLI Adapter 升级为 Claude Agent SDK Adapter，并完善工具队列体验。
 - Agent Skill 后续：补充网络检索安装、Skill 资源文件管理和可控的本地记忆沉淀。
+- Vercel：让 Root Directory 为 `web` 的部署也能提供 `/api/proxy` 转发函数。当前给 `web/api/` 加任意函数文件（`.js` 或 `.ts`、内容与根目录 `api/proxy.js` 无关）都会让 Vercel 构建失败，去掉该目录即恢复，根目录 `api/proxy.js`、`functions` 配置、`framework` 预设开关都试过无效；需要拿到构建日志（`vercel inspect <deployment> --logs`）确认是 Monorepo + Vite 预设的限制还是项目设置，确认后把 `web/api/proxy.js`（与根目录版本保持一致）加回来，并同步 `docs/content/docs/overview/quick-start.mdx` 的部署说明。

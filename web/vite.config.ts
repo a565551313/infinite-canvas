@@ -70,7 +70,15 @@ function devCorsProxy(): Plugin {
                         }
                     }
                 }
-                if (!target || !/^https?:\/\//i.test(target)) {
+                if (!target) {
+                    // The frontend probes this root path to learn whether the deployment serves the relay,
+                    // so it has to answer like the Vercel and Cloudflare Pages functions do.
+                    res.statusCode = 200;
+                    res.setHeader("content-type", "application/json; charset=utf-8");
+                    res.end(JSON.stringify({ name: "infinite-canvas-cors-proxy", usage: "/api/proxy?url=<full-target-url>" }));
+                    return;
+                }
+                if (!/^https?:\/\//i.test(target)) {
                     res.statusCode = 400;
                     res.setHeader("content-type", "application/json");
                     res.end(JSON.stringify({ error: "Missing url param" }));

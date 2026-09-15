@@ -11,6 +11,13 @@ description: 用最少步骤把无限画布跑起来
 
 在 Vercel 中导入仓库即可，根目录 `vercel.json` 会构建 `web/`。当前版本的 AI 请求由浏览器前台直连用户自己的 OpenAI 兼容地址，不需要额外配置服务端。
 
+不允许浏览器跨域调用的网关（如 `botcf.com`）依赖同源转发接口 `/api/proxy`，目前只有仓库根目录这一种布局会带上它：
+
+- Root Directory 为仓库根目录：由根目录 `vercel.json` 构建 `web/`，`api/proxy.js` 会被部署成转发函数。
+- Root Directory 为 `web`：不会部署转发函数，`/api/proxy` 落到静态站点并报 `405`，此时请在配置里开启本地代理（往 `web/api/` 加函数目前会让 Vercel 构建失败，见待办）。
+
+部署完成后访问 `https://<你的域名>/api/proxy`，必须返回 `{"name":"infinite-canvas-cors-proxy",...}`；拿到的还是页面或 404 就说明转发函数没部署上。另外 Vercel 对函数最长执行时间有限制，特别长的流式回答仍可能被截断，本地代理没有这个限制。
+
 ## 本地启动
 
 ```bash

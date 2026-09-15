@@ -2,7 +2,7 @@ import axios from "axios";
 
 import i18n from "@/i18n";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, withLocalProxy, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
-import { axiosWithProxyFallback, fetchWithProxyFallback } from "./proxy-fallback";
+import { ProxyUnavailableError, axiosWithProxyFallback, fetchWithProxyFallback } from "./proxy-fallback";
 import { normalizePluginImages, runModelPlugin } from "./model-plugin";
 import { nanoid } from "nanoid";
 import { dataUrlToFile } from "@/lib/image-utils";
@@ -354,6 +354,7 @@ function readStatusError(status: number | undefined, fallback: string) {
     if (status === 401 || status === 403) return apiText("authenticationFailed");
     if (status === 429) return apiText("rateLimited");
     if (status === 404) return apiText("notFound");
+    if (status === 405) return apiText("methodNotAllowed");
     if (status === 502) return apiText("badGateway");
     if (status === 503) return apiText("serviceBusy");
     return status ? apiText("httpFailed", { status }) : fallback;
@@ -621,6 +622,8 @@ async function requestChatCompletions(config: AiConfig, messages: AiTextMessage[
  * Auth, rate-limit and bad-request failures are deliberately excluded: retrying those just hides the real cause.
  */
 function isEndpointUnavailable(error: unknown) {
+    // A deployment without the site relay fails the same way on every endpoint, so never retry through another one.
+    if (error instanceof ProxyUnavailableError) return false;
     // Native fetch rejects with a TypeError ("Failed to fetch") when no response ever arrives, which is how
     // many gateways fail on a path they do not implement: they answer without CORS headers or drop the socket.
     if (isFetchNetworkError(error)) return true;
