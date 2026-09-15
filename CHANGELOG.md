@@ -2,6 +2,8 @@
 
 ## Unreleased
 
++ [修复] 优化提示词等文本请求在 `botcf.com` 等未返回 CORS 头的网关上被浏览器拦截的问题：前端跨域请求默认走同源 `/api/proxy` 转发（Vercel / Cloudflare Pages / Vite 开发服务器），本地代理开启时仍优先走本地代理，Docker 等无同源代理的环境自动回退到直连；并为文本、图片、视频、音频及模型列表请求增加代理 404 时的直连回退，避免控制台出现 `No 'Access-Control-Allow-Origin'` 报错。
+
 ## v0.18.0 - 2026-09-07
 
 + [调整] 图片 1K / 2K / 4K 按宽高比使用固定尺寸表。

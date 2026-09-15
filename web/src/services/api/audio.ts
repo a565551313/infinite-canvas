@@ -4,6 +4,7 @@ import i18n from "@/i18n";
 import { audioMimeType, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue } from "@/lib/audio-generation";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, withLocalProxy, type AiConfig } from "@/stores/use-config-store";
+import { axiosWithProxyFallback } from "./proxy-fallback";
 import { runModelPlugin } from "./model-plugin";
 
 type RequestOptions = { signal?: AbortSignal };
@@ -47,7 +48,7 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
     const instructions = config.audioInstructions.trim();
 
     try {
-        const response = await axios.post<Blob>(
+        const response = await axiosWithProxyFallback(() => axios.post<Blob>(
             aiApiUrl(requestConfig, "/audio/speech"),
             {
                 model,
@@ -58,7 +59,7 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
                 ...(instructions ? { instructions } : {}),
             },
             { headers: aiHeaders(requestConfig), responseType: "blob", signal: options?.signal },
-        );
+        ));
         await assertAudioBlob(response.data);
         return response.data.type.startsWith("audio/") ? response.data : new Blob([response.data], { type: audioMimeType(format) });
     } catch (error) {
