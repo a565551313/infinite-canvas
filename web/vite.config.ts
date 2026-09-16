@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
@@ -9,6 +9,16 @@ import { parseChangelog } from "./src/lib/release";
 const webDir = dirname(fileURLToPath(import.meta.url));
 const localVersion = readFileSync(resolve(webDir, "../VERSION"), "utf8").trim() || "dev";
 const localChangelog = readFileSync(resolve(webDir, "../CHANGELOG.md"), "utf8");
+
+// Fork-only customization metadata. These files are absent on branches that purely track upstream,
+// so every read is optional and the frontend hides the custom section when the values are empty.
+function readOptionalFile(relativePath: string) {
+    const path = resolve(webDir, relativePath);
+    return existsSync(path) ? readFileSync(path, "utf8") : "";
+}
+
+const customVersion = readOptionalFile("../CUSTOM_VERSION").trim();
+const customChangelog = readOptionalFile("../CUSTOM_CHANGELOG.md");
 
 // Expose /plugins/index.json with local plugin files from public/plugins.
 // The frontend can discover and list them when enabled; development reads the directory live, while builds emit a static registry.
@@ -164,5 +174,7 @@ export default defineConfig({
     define: {
         __APP_VERSION__: JSON.stringify(localVersion),
         __APP_RELEASES__: JSON.stringify(parseChangelog(localChangelog)),
+        __CUSTOM_VERSION__: JSON.stringify(customVersion),
+        __CUSTOM_RELEASES__: JSON.stringify(customChangelog.trim() ? parseChangelog(customChangelog) : []),
     },
 });

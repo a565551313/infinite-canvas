@@ -2,6 +2,9 @@
 
 declare const __APP_VERSION__: string;
 declare const __APP_RELEASES__: import("@/lib/release").ReleaseInfo[];
+// Fork-only customization metadata; empty on builds that purely track upstream.
+declare const __CUSTOM_VERSION__: string;
+declare const __CUSTOM_RELEASES__: import("@/lib/release").ReleaseInfo[];
 
 interface ImportMetaEnv {
     // Comma-separated local development plugin URLs, refetched on every startup without caching or persistence.
