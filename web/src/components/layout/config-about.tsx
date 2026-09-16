@@ -1,5 +1,5 @@
 import { GithubOutlined } from "@ant-design/icons";
-import { Button, Form, Select } from "antd";
+import { Button, Form, Select, Tag } from "antd";
 import { BookOpen, History, Info, Languages, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -60,17 +60,40 @@ export function ConfigAbout() {
                         </div>
                         <div className="mt-1 text-xs text-stone-500">{t("config.about.versionDescription")}</div>
                     </div>
-                    <Button icon={<RefreshCw className="size-4" />} loading={version.checking} onClick={() => void version.checkLatestRelease(true)}>
-                        {t(version.checking ? "version.checking" : "version.checkUpdates")}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {version.customEnabled ? (
+                            <Button type="primary" ghost icon={<RefreshCw className="size-4" />} loading={version.checkingCustom} onClick={() => void version.checkCustomRelease(true)}>
+                                {t(version.checkingCustom ? "version.checking" : "version.checkCustomUpdates")}
+                            </Button>
+                        ) : null}
+                        <Button icon={<RefreshCw className="size-4" />} loading={version.checking} onClick={() => void version.checkLatestRelease(true)}>
+                            {t(version.checking ? "version.checking" : version.customEnabled ? "version.checkUpstreamUpdates" : "version.checkUpdates")}
+                        </Button>
+                    </div>
                 </div>
+                {version.customEnabled ? (
+                    <div className="mt-4 rounded-lg border border-stone-200 p-3 dark:border-stone-800">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs text-stone-500 dark:text-stone-400">{t("version.customVersion")}</span>
+                            {version.hasNewCustomVersion ? <Tag color="green">{t("version.customNewAvailable")}</Tag> : null}
+                        </div>
+                        <div className="mt-1 text-lg font-semibold text-stone-950 dark:text-stone-100">{version.currentCustomVersion}</div>
+                        <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                            {t("version.customLatest")}
+                            <span className="ml-1 font-medium text-stone-700 dark:text-stone-300">{version.latestCustomVersion}</span>
+                        </div>
+                    </div>
+                ) : null}
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="rounded-lg border border-stone-200 p-3 dark:border-stone-800">
-                        <div className="text-xs text-stone-500 dark:text-stone-400">{t("version.currentVersion")}</div>
+                        <div className="text-xs text-stone-500 dark:text-stone-400">{t(version.customEnabled ? "version.upstreamBaseline" : "version.currentVersion")}</div>
                         <div className="mt-1 text-base font-semibold text-stone-950 dark:text-stone-100">{APP_VERSION}</div>
                     </div>
                     <div className="rounded-lg border border-stone-200 p-3 dark:border-stone-800">
-                        <div className="text-xs text-stone-500 dark:text-stone-400">{t("version.latestVersion")}</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-stone-500 dark:text-stone-400">{t("version.latestVersion")}</span>
+                            {version.hasNewVersion ? <Tag color="green">{t("version.newAvailable")}</Tag> : null}
+                        </div>
                         <div className="mt-1 text-base font-semibold text-stone-950 dark:text-stone-100">{version.latestVersion}</div>
                     </div>
                 </div>
