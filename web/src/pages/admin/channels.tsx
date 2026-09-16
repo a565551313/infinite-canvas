@@ -1,5 +1,5 @@
-import { Button, Card, Drawer, Form, Input, InputNumber, Select, Switch, Table, Tag, message } from "antd";
-import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Drawer, Form, Input, InputNumber, Select, Switch, Table, Tag, message } from "antd";
+import { Plus, Trash2, Waypoints } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -81,74 +81,87 @@ export default function AdminChannelsPage() {
     };
 
     return (
-        <div>
+        <div className="space-y-4">
             {contextHolder}
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-lg font-semibold">{t("admin.menu.channels")}</h1>
-                    <p className="text-sm text-stone-500">{t("admin.channels.apiKeyHint")}</p>
+                    <h1 className="text-xl font-semibold text-stone-950 dark:text-stone-100">{t("admin.menu.channels")}</h1>
+                    <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{t("admin.channels.apiKeyHint")}</p>
                 </div>
-                <Button type="primary" onClick={openCreate}>
+                <Button type="primary" icon={<Waypoints className="size-4" />} onClick={openCreate}>
                     {t("admin.channels.add")}
                 </Button>
             </div>
 
-            <Table
-                dataSource={rows}
-                rowKey="id"
-                pagination={false}
-                scroll={{ x: 800 }}
-                columns={[
-                    {
-                        title: t("admin.channels.columns.name"),
-                        key: "name",
-                        render: (_: unknown, r: MockChannel) => (
-                            <div>
-                                <div className="font-medium">{r.name}</div>
-                                <div className="font-mono text-xs text-stone-500">{r.baseUrl}</div>
-                            </div>
-                        ),
-                    },
-                    {
-                        title: t("admin.channels.columns.models"),
-                        key: "models",
-                        render: (_: unknown, r: MockChannel) => (
-                            <div className="flex flex-wrap gap-1">
-                                {r.models.map((m) => (
-                                    <Tag key={m.model}>
-                                        {m.model} · {m.price} / {t(`admin.channels.units.${m.unit}`)}
-                                    </Tag>
-                                ))}
-                            </div>
-                        ),
-                    },
-                    {
-                        title: t("admin.channels.columns.enabled"),
-                        dataIndex: "enabled",
-                        key: "enabled",
-                        render: (v: boolean, record: MockChannel) => <Switch checked={v} onChange={(checked) => toggleEnabled(record.id, checked)} />,
-                    },
-                    { title: t("admin.channels.columns.calls"), dataIndex: "calls30d", key: "calls30d" },
-                    { title: t("admin.channels.columns.cost"), dataIndex: "cost30d", key: "cost30d" },
-                    {
-                        title: "操作",
-                        key: "actions",
-                        render: (_: unknown, r: MockChannel) => (
-                            <div className="flex gap-2">
-                                <Button size="small" onClick={() => messageApi.success(t("admin.channels.testOk"))}>
-                                    {t("admin.channels.test")}
-                                </Button>
-                                <Button size="small" onClick={() => openEdit(r)}>
-                                    {t("admin.channels.edit")}
-                                </Button>
-                            </div>
-                        ),
-                    },
-                ]}
-            />
+            <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                <Table
+                    dataSource={rows}
+                    rowKey="id"
+                    pagination={false}
+                    size="middle"
+                    scroll={{ x: 800 }}
+                    columns={[
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.channels.columns.name")}</span>,
+                            key: "name",
+                            render: (_: unknown, r: MockChannel) => (
+                                <div>
+                                    <div className="text-sm font-medium text-stone-950 dark:text-stone-100">{r.name}</div>
+                                    <div className="font-mono text-xs text-stone-500 dark:text-stone-400">{r.baseUrl}</div>
+                                </div>
+                            ),
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.channels.columns.models")}</span>,
+                            key: "models",
+                            render: (_: unknown, r: MockChannel) => (
+                                <div className="flex flex-wrap gap-1">
+                                    {r.models.map((m) => (
+                                        <Tag key={m.model} className="m-0">
+                                            {m.model} · {m.price} / {t(`admin.channels.units.${m.unit}`)}
+                                        </Tag>
+                                    ))}
+                                </div>
+                            ),
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.channels.columns.enabled")}</span>,
+                            dataIndex: "enabled",
+                            key: "enabled",
+                            render: (v: boolean, record: MockChannel) => <Switch checked={v} onChange={(checked) => toggleEnabled(record.id, checked)} />,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.channels.columns.calls")}</span>,
+                            dataIndex: "calls30d",
+                            key: "calls30d",
+                            render: (v: number) => <span className="text-sm text-stone-950 dark:text-stone-100">{v}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.channels.columns.cost")}</span>,
+                            dataIndex: "cost30d",
+                            key: "cost30d",
+                            render: (v: number) => <span className="text-sm text-stone-950 dark:text-stone-100">{v}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">操作</span>,
+                            key: "actions",
+                            render: (_: unknown, r: MockChannel) => (
+                                <div className="flex gap-2">
+                                    <Button size="small" onClick={() => messageApi.success(t("admin.channels.testOk"))}>
+                                        {t("admin.channels.test")}
+                                    </Button>
+                                    <Button size="small" onClick={() => openEdit(r)}>
+                                        {t("admin.channels.edit")}
+                                    </Button>
+                                </div>
+                            ),
+                        },
+                    ]}
+                />
+            </section>
 
             <Drawer
-                title={isNew ? t("admin.channels.add") : t("admin.channels.edit")}
+                title={<span className="text-sm font-semibold text-stone-950 dark:text-stone-100">{isNew ? t("admin.channels.add") : t("admin.channels.edit")}</span>}
                 open={open}
                 onClose={() => setOpen(false)}
                 width={520}
@@ -158,19 +171,19 @@ export default function AdminChannelsPage() {
                     </Button>
                 }
             >
-                <Form<ChannelFormValues> form={form} layout="vertical">
-                    <Form.Item name="name" label={t("admin.channels.fields.name")} rules={[{ required: true }]}>
+                <Form<ChannelFormValues> form={form} layout="vertical" requiredMark={false}>
+                    <Form.Item name="name" label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("admin.channels.fields.name")}</span>} rules={[{ required: true }]}>
                         <Input />
                     </Form.Item>
-                    <Form.Item name="baseUrl" label={t("admin.channels.fields.baseUrl")} rules={[{ required: true }]}>
+                    <Form.Item name="baseUrl" label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("admin.channels.fields.baseUrl")}</span>} rules={[{ required: true }]}>
                         <Input className="font-mono" placeholder="https://api.example.com" />
                     </Form.Item>
                     <Form.Item
                         name="apiKey"
-                        label={t("admin.channels.fields.apiKey")}
+                        label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("admin.channels.fields.apiKey")}</span>}
                         extra={
                             !isNew && editing ? (
-                                <span className="text-xs text-stone-500">
+                                <span className="text-xs text-stone-500 dark:text-stone-400">
                                     {t("admin.channels.fields.current")}: <span className="font-mono">{editing.apiKeyMasked}</span> · {t("admin.channels.fields.apiKeyKeep")}
                                 </span>
                             ) : undefined
@@ -179,7 +192,7 @@ export default function AdminChannelsPage() {
                         <Input.Password placeholder={isNew ? "sk-..." : t("admin.channels.fields.apiKeyKeep")} />
                     </Form.Item>
 
-                    <div className="mb-2 text-sm font-medium">{t("admin.channels.fields.models")}</div>
+                    <div className="mb-2 text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.channels.fields.models")}</div>
                     <Form.List name="models">
                         {(fields, { add, remove }) => (
                             <div className="space-y-3">
@@ -200,10 +213,10 @@ export default function AdminChannelsPage() {
                                         <Form.Item {...restField} name={[name, "price"]} className="mb-0 w-[100px]">
                                             <InputNumber placeholder={t("admin.channels.modelColumns.price")} className="w-full" min={0} />
                                         </Form.Item>
-                                        <Button type="text" icon={<MinusCircleOutlined />} onClick={() => remove(name)} />
+                                        <Button type="text" icon={<Trash2 className="size-4" />} onClick={() => remove(name)} aria-label="remove" />
                                     </div>
                                 ))}
-                                <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add({ model: "", unit: "token", price: 0 })}>
+                                <Button type="dashed" block icon={<Plus className="size-4" />} onClick={() => add({ model: "", unit: "token", price: 0 })}>
                                     {t("admin.channels.fields.addModel")}
                                 </Button>
                             </div>

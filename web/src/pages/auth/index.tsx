@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Checkbox, Form, Input, Tabs } from "antd";
+import { Alert, Button, Checkbox, Form, Input, Tabs } from "antd";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -27,7 +27,6 @@ export default function AuthPage() {
         setLoading(true);
         await new Promise((resolve) => setTimeout(resolve, 400));
         signIn({ email: values.email, password: values.password, asAdmin: Boolean(values.asAdmin) });
-        // Need to read updated user synchronously; derive role from asAdmin for navigation
         const isAdmin = Boolean(values.asAdmin);
         setLoading(false);
         const target = isAdmin && from === "/" ? "/admin" : from;
@@ -35,14 +34,14 @@ export default function AuthPage() {
     };
 
     return (
-        <div className="flex min-h-dvh items-center justify-center bg-stone-50 px-4 py-10 dark:bg-stone-950">
-            <div className="w-full max-w-[420px]">
-                <div className="mb-6 text-center">
-                    <h1 className="text-2xl font-semibold tracking-tight">{t("auth.title")}</h1>
-                    <p className="mt-2 text-sm text-stone-500">{t("auth.subtitle")}</p>
+        <main className="flex min-h-dvh items-center justify-center bg-background px-6 py-10">
+            <div className="w-full max-w-[420px] space-y-4">
+                <div className="text-center">
+                    <h1 className="text-xl font-semibold text-stone-950 dark:text-stone-100">{t("auth.title")}</h1>
+                    <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{t("auth.subtitle")}</p>
                 </div>
 
-                <Card className="shadow-sm">
+                <section className="rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-950">
                     <Tabs
                         activeKey={activeKey}
                         onChange={(k) => setActiveKey(k as "login" | "register")}
@@ -59,10 +58,11 @@ export default function AuthPage() {
                         onFinish={onSubmit}
                         requiredMark={false}
                         initialValues={{ asAdmin: false }}
+                        className="mt-4"
                     >
                         <Form.Item
                             name="email"
-                            label={t("auth.email")}
+                            label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("auth.email")}</span>}
                             rules={[
                                 { required: true, message: t("auth.invalidEmail") },
                                 { type: "email", message: t("auth.invalidEmail") },
@@ -73,7 +73,7 @@ export default function AuthPage() {
 
                         <Form.Item
                             name="password"
-                            label={t("auth.password")}
+                            label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("auth.password")}</span>}
                             rules={[
                                 { required: true, message: t("auth.passwordTooShort") },
                                 { min: 8, message: t("auth.passwordTooShort") },
@@ -85,7 +85,7 @@ export default function AuthPage() {
                         {activeKey === "register" ? (
                             <Form.Item
                                 name="confirmPassword"
-                                label={t("auth.confirmPassword")}
+                                label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("auth.confirmPassword")}</span>}
                                 dependencies={["password"]}
                                 rules={[
                                     { required: true, message: t("auth.passwordMismatch") },
@@ -101,8 +101,10 @@ export default function AuthPage() {
                             </Form.Item>
                         ) : null}
 
-                        <Form.Item name="asAdmin" valuePropName="checked" className="mb-2">
-                            <Checkbox>{t("auth.demoAdmin")}</Checkbox>
+                        <Form.Item name="asAdmin" valuePropName="checked" className="mb-3">
+                            <Checkbox>
+                                <span className="text-sm text-stone-500 dark:text-stone-400">{t("auth.demoAdmin")}</span>
+                            </Checkbox>
                         </Form.Item>
 
                         <Form.Item className="mb-0">
@@ -111,10 +113,10 @@ export default function AuthPage() {
                             </Button>
                         </Form.Item>
                     </Form>
-                </Card>
+                </section>
 
-                <Alert className="mt-4" type="info" showIcon message={t("auth.demoNotice")} />
+                <Alert type="info" showIcon message={<span className="text-sm text-stone-500 dark:text-stone-400">{t("auth.demoNotice")}</span>} className="rounded-lg" />
             </div>
-        </div>
+        </main>
     );
 }

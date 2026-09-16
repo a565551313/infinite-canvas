@@ -1,11 +1,11 @@
-import { Alert, Button, Card, InputNumber, Modal, Table, Tag, Form, Input, message } from "antd";
-import { CopyOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Input, InputNumber, Modal, Table, Tag, message } from "antd";
+import { Copy, Ticket } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { mockRedeemCodes, type MockRedeemCode } from "@/services/cloud/mock-data";
 
-const CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 去掉 0/O/1/I/L
+const CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function randomCode(): string {
     const pick = () => CHARSET[Math.floor(Math.random() * CHARSET.length)];
@@ -29,8 +29,6 @@ export default function AdminCreditsPage() {
             const maxUses = values.maxUses as number;
             const expiryDays = values.expiryDays as number;
             const expiresAt = new Date(Date.now() + expiryDays * 86400000).toISOString();
-            const now = new Date().toISOString();
-            void now;
             const newCodes: MockRedeemCode[] = Array.from({ length: count }, () => ({
                 code: randomCode(),
                 credits,
@@ -52,7 +50,7 @@ export default function AdminCreditsPage() {
         try {
             await navigator.clipboard.writeText(code);
         } catch {
-            // fallback via copy lib not needed; silently ignore
+            // ignore
         }
         messageApi.success(t("admin.credits.copied"));
     };
@@ -64,91 +62,105 @@ export default function AdminCreditsPage() {
     };
 
     return (
-        <div>
+        <div className="space-y-4">
             {contextHolder}
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-lg font-semibold">{t("admin.menu.credits")}</h1>
-                    <p className="text-sm text-stone-500">{t("admin.credits.genHint")}</p>
+                    <h1 className="text-xl font-semibold text-stone-950 dark:text-stone-100">{t("admin.menu.credits")}</h1>
+                    <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{t("admin.credits.genHint")}</p>
                 </div>
-                <Button type="primary" onClick={() => setOpen(true)}>
+                <Button type="primary" icon={<Ticket className="size-4" />} onClick={() => setOpen(true)}>
                     {t("admin.credits.generate")}
                 </Button>
             </div>
 
             {generated.length ? (
-                <Card className="mb-4 border-green-300 bg-green-50 dark:bg-green-950/20" title={t("admin.credits.generatedTitle", { count: generated.length })}>
-                    <div className="flex flex-wrap gap-2">
+                <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                    <div className="text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.credits.generatedTitle", { count: generated.length })}</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
                         {generated.map((g) => (
-                            <Tag
+                            <button
                                 key={g.code}
-                                color="green"
-                                className="cursor-pointer !px-3 !py-1 font-mono text-sm"
+                                type="button"
                                 onClick={() => copy(g.code)}
+                                className="rounded border border-stone-200 bg-stone-50 px-3 py-1 font-mono text-sm text-stone-950 hover:bg-stone-100 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800"
                             >
                                 {g.code}
-                            </Tag>
+                            </button>
                         ))}
                     </div>
-                </Card>
+                </section>
             ) : null}
 
-            <Table
-                dataSource={rows}
-                rowKey="code"
-                pagination={false}
-                scroll={{ x: 700 }}
-                columns={[
-                    {
-                        title: t("admin.credits.columns.code"),
-                        dataIndex: "code",
-                        key: "code",
-                        render: (v: string) => (
-                            <span className="inline-flex items-center gap-2 font-mono text-sm">
-                                {v}
-                                <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => copy(v)} />
-                            </span>
-                        ),
-                    },
-                    { title: t("admin.credits.columns.credits"), dataIndex: "credits", key: "credits" },
-                    {
-                        title: t("admin.credits.columns.usage"),
-                        key: "usage",
-                        render: (_: unknown, r: MockRedeemCode) => `${r.usedCount}/${r.maxUses}`,
-                    },
-                    {
-                        title: t("admin.credits.columns.expires"),
-                        dataIndex: "expiresAt",
-                        key: "expiresAt",
-                        render: (v: string) => new Date(v).toLocaleDateString(),
-                    },
-                    { title: t("admin.credits.columns.createdBy"), dataIndex: "createdBy", key: "createdBy" },
-                    {
-                        title: t("admin.credits.columns.status"),
-                        dataIndex: "status",
-                        key: "status",
-                        render: (v: string) => statusTag(v),
-                    },
-                ]}
-            />
+            <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                <Table
+                    dataSource={rows}
+                    rowKey="code"
+                    pagination={false}
+                    size="middle"
+                    scroll={{ x: 700 }}
+                    columns={[
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.credits.columns.code")}</span>,
+                            dataIndex: "code",
+                            key: "code",
+                            render: (v: string) => (
+                                <span className="inline-flex items-center gap-2 font-mono text-sm text-stone-950 dark:text-stone-100">
+                                    {v}
+                                    <Button size="small" type="text" icon={<Copy className="size-4" />} onClick={() => copy(v)} aria-label={t("common.copy")} />
+                                </span>
+                            ),
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.credits.columns.credits")}</span>,
+                            dataIndex: "credits",
+                            key: "credits",
+                            render: (v: number) => <span className="text-sm text-stone-950 dark:text-stone-100">{v}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.credits.columns.usage")}</span>,
+                            key: "usage",
+                            render: (_: unknown, r: MockRedeemCode) => <span className="text-sm text-stone-500 dark:text-stone-400">{`${r.usedCount}/${r.maxUses}`}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.credits.columns.expires")}</span>,
+                            dataIndex: "expiresAt",
+                            key: "expiresAt",
+                            render: (v: string) => <span className="text-sm text-stone-500 dark:text-stone-400">{new Date(v).toLocaleDateString()}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.credits.columns.createdBy")}</span>,
+                            dataIndex: "createdBy",
+                            key: "createdBy",
+                            render: (v: string) => <span className="text-sm text-stone-500 dark:text-stone-400">{v}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.credits.columns.status")}</span>,
+                            dataIndex: "status",
+                            key: "status",
+                            render: (v: string) => statusTag(v),
+                        },
+                    ]}
+                />
+            </section>
 
-            <Modal title={t("admin.credits.generate")} open={open} onCancel={() => setOpen(false)} onOk={handleGenerate} okText={t("admin.credits.genSubmit")}>
-                <Form form={form} layout="vertical" initialValues={{ count: 5, credits: 500, maxUses: 1, expiryDays: 30 }}>
+            <Modal title={<span className="text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.credits.generate")}</span>} open={open} onCancel={() => setOpen(false)} onOk={handleGenerate} okText={t("admin.credits.genSubmit")}>
+                <Form form={form} layout="vertical" requiredMark={false} initialValues={{ count: 5, credits: 500, maxUses: 1, expiryDays: 30 }}>
                     <div className="grid grid-cols-2 gap-4">
-                        <Form.Item name="count" label={t("admin.credits.genCount")} rules={[{ required: true }]}>
+                        <Form.Item name="count" label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("admin.credits.genCount")}</span>} rules={[{ required: true }]}>
                             <InputNumber min={1} max={100} className="w-full" />
                         </Form.Item>
-                        <Form.Item name="credits" label={t("admin.credits.genValue")} rules={[{ required: true }]}>
+                        <Form.Item name="credits" label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("admin.credits.genValue")}</span>} rules={[{ required: true }]}>
                             <InputNumber min={1} className="w-full" />
                         </Form.Item>
-                        <Form.Item name="maxUses" label={t("admin.credits.genMaxUses")} rules={[{ required: true }]}>
+                        <Form.Item name="maxUses" label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("admin.credits.genMaxUses")}</span>} rules={[{ required: true }]}>
                             <InputNumber min={1} className="w-full" />
                         </Form.Item>
-                        <Form.Item name="expiryDays" label={t("admin.credits.genExpiryDays")} rules={[{ required: true }]}>
+                        <Form.Item name="expiryDays" label={<span className="text-sm text-stone-950 dark:text-stone-100">{t("admin.credits.genExpiryDays")}</span>} rules={[{ required: true }]}>
                             <InputNumber min={1} className="w-full" />
                         </Form.Item>
                     </div>
-                    <Alert type="info" showIcon message={t("admin.credits.genHint")} />
+                    <Alert type="info" showIcon message={<span className="text-sm text-stone-500 dark:text-stone-400">{t("admin.credits.genHint")}</span>} />
                 </Form>
             </Modal>
         </div>

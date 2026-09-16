@@ -1,4 +1,5 @@
 import { Avatar, Button, Dropdown } from "antd";
+import { LogOut, Settings, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -13,7 +14,7 @@ export function UserMenu() {
 
     if (status !== "signedIn" || !user) {
         return (
-            <Button ghost type="primary" onClick={() => navigate("/login")}>
+            <Button type="primary" ghost onClick={() => navigate("/login")}>
                 {t("topNav.userMenu.login")}
             </Button>
         );
@@ -25,6 +26,7 @@ export function UserMenu() {
         {
             key: "account",
             label: t("topNav.userMenu.account"),
+            icon: <Settings className="size-4" />,
             onClick: () => navigate("/account"),
         },
         ...(user.role === "admin"
@@ -32,6 +34,7 @@ export function UserMenu() {
                   {
                       key: "admin",
                       label: t("topNav.userMenu.admin"),
+                      icon: <Shield className="size-4" />,
                       onClick: () => navigate("/admin"),
                   } as const,
               ]
@@ -40,6 +43,7 @@ export function UserMenu() {
         {
             key: "signOut",
             label: t("topNav.userMenu.signOut"),
+            icon: <LogOut className="size-4" />,
             onClick: () => {
                 signOut();
                 navigate("/", { replace: true });
@@ -49,11 +53,14 @@ export function UserMenu() {
 
     return (
         <Dropdown menu={{ items }} trigger={["click"]} placement="bottomRight">
-            <button type="button" className="inline-flex items-center gap-2 rounded-full px-1 py-1 hover:bg-stone-100 dark:hover:bg-stone-800">
-                <Avatar size={28} style={{ backgroundColor: "#1677ff", verticalAlign: "middle" }}>
+            <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full px-1 py-1 text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800"
+            >
+                <Avatar size={28} className="!bg-stone-200 !text-stone-700 dark:!bg-stone-800 dark:!text-stone-200">
                     {initial}
                 </Avatar>
-                <span className="max-w-[100px] truncate text-sm font-medium">{user.name}</span>
+                <span className="max-w-[100px] truncate text-sm font-medium text-stone-950 dark:text-stone-100">{user.name}</span>
             </button>
         </Dropdown>
     );

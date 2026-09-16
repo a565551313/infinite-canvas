@@ -1,5 +1,5 @@
-import { Card, Statistic, Tag } from "antd";
-import { ArrowDownOutlined, ArrowUpOutlined } from "@ant-design/icons";
+import { Tag } from "antd";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { mockStats } from "@/services/cloud/mock-data";
@@ -23,29 +23,28 @@ export default function AdminDashboardPage() {
                 {cards.map((c) => {
                     const isFail = c.key === "failRate";
                     const positive = c.delta >= 0;
-                    // failRate 视为反向：上涨为负面（红），下跌为正面（绿）? 但按 spec 统一：正绿上箭头/负红下箭头
                     return (
-                        <Card key={c.key} size="small">
-                            <Statistic
-                                title={t(`admin.dashboard.cards.${c.key}`)}
-                                value={c.value}
-                                suffix={isFail ? "%" : undefined}
-                                precision={isFail ? 1 : 0}
-                            />
+                        <section key={c.key} className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                            <div className="text-xs text-stone-500 dark:text-stone-400">{t(`admin.dashboard.cards.${c.key}`)}</div>
+                            <div className="mt-1 flex items-baseline gap-1">
+                                <span className="text-xl font-semibold text-stone-950 dark:text-stone-100">{c.value}</span>
+                                {isFail ? <span className="text-sm text-stone-500 dark:text-stone-400">%</span> : null}
+                            </div>
                             <div className={`mt-2 flex items-center gap-1 text-xs ${positive ? "text-green-600" : "text-red-600"}`}>
-                                {positive ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                                {positive ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
                                 <span>
                                     {positive ? "+" : ""}
                                     {c.delta}% {t("admin.dashboard.vsYesterday")}
                                 </span>
                             </div>
-                        </Card>
+                        </section>
                     );
                 })}
             </div>
 
-            <Card title={t("admin.dashboard.trend")}>
-                <div className="flex items-end gap-2 h-[160px]">
+            <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                <div className="text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.dashboard.trend")}</div>
+                <div className="mt-4 flex items-end gap-2 h-[160px]">
                     {trend.map((value, idx) => {
                         const h = Math.round((value / maxTrend) * 120) + 8;
                         return (
@@ -55,23 +54,24 @@ export default function AdminDashboardPage() {
                                     className="w-full rounded bg-stone-200 hover:bg-stone-900 dark:bg-stone-800 dark:hover:bg-stone-100 transition-colors"
                                     style={{ height: h }}
                                 />
-                                <span className="text-xs text-stone-500">{dates[idx]}</span>
+                                <span className="text-xs text-stone-500 dark:text-stone-400">{dates[idx]}</span>
                             </div>
                         );
                     })}
                 </div>
-            </Card>
+            </section>
 
             <div className="grid gap-4 md:grid-cols-2">
-                <Card title={t("admin.dashboard.byModel")}>
-                    <div className="space-y-3">
+                <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                    <div className="text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.dashboard.byModel")}</div>
+                    <div className="mt-4 space-y-3">
                         {byModel.map((m) => {
                             const pct = Math.round((m.calls / maxByModelCalls) * 100);
                             return (
                                 <div key={m.name} className="space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <span className="font-mono text-sm">{m.name}</span>
-                                        <span className="text-xs text-stone-500">
+                                        <span className="font-mono text-sm text-stone-950 dark:text-stone-100">{m.name}</span>
+                                        <span className="text-xs text-stone-500 dark:text-stone-400">
                                             {m.calls} {t("admin.dashboard.callsUnit")} · {m.credits} {t("admin.dashboard.creditsUnit")}
                                         </span>
                                     </div>
@@ -82,10 +82,11 @@ export default function AdminDashboardPage() {
                             );
                         })}
                     </div>
-                </Card>
+                </section>
 
-                <Card title={t("admin.dashboard.topUsers")}>
-                    <div className="space-y-3">
+                <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                    <div className="text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.dashboard.topUsers")}</div>
+                    <div className="mt-4 space-y-3">
                         {topUsers.map((u, idx) => {
                             const rank = idx + 1;
                             const tagColor = rank === 1 ? "gold" : rank === 2 ? "blue" : "default";
@@ -95,16 +96,16 @@ export default function AdminDashboardPage() {
                                     <Tag color={tagColor} className="min-w-[28px] text-center">
                                         {rank}
                                     </Tag>
-                                    <span className="w-20 truncate text-sm">{u.name}</span>
+                                    <span className="w-20 truncate text-sm text-stone-950 dark:text-stone-100">{u.name}</span>
                                     <div className="h-2 flex-1 rounded bg-stone-100 dark:bg-stone-800">
-                                        <div className="h-2 rounded bg-blue-500" style={{ width: `${pct}%` }} />
+                                        <div className="h-2 rounded bg-stone-900 dark:bg-stone-100" style={{ width: `${pct}%` }} />
                                     </div>
-                                    <span className="w-16 text-right text-sm tabular-nums">{u.credits}</span>
+                                    <span className="w-16 text-right text-sm tabular-nums text-stone-950 dark:text-stone-100">{u.credits}</span>
                                 </div>
                             );
                         })}
                     </div>
-                </Card>
+                </section>
             </div>
         </div>
     );

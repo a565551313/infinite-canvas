@@ -1,4 +1,5 @@
 import { Alert, Avatar, Button, Descriptions, Drawer, Input, InputNumber, Modal, Table, Tag } from "antd";
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,7 +11,6 @@ export default function AdminUsersPage() {
     const [search, setSearch] = useState("");
     const [detailUser, setDetailUser] = useState<MockUser | null>(null);
     const [adjustOpen, setAdjustOpen] = useState(false);
-    const [adjustTarget, setAdjustTarget] = useState<MockUser | null>(null);
     const [delta, setDelta] = useState<number | null>(null);
     const [reason, setReason] = useState("");
     const [deltaError, setDeltaError] = useState<string | null>(null);
@@ -29,8 +29,7 @@ export default function AdminUsersPage() {
         }
     };
 
-    const openAdjust = (user: MockUser) => {
-        setAdjustTarget(user);
+    const openAdjust = () => {
         setDelta(null);
         setReason("");
         setDeltaError(null);
@@ -53,7 +52,6 @@ export default function AdminUsersPage() {
             setReasonError(null);
         }
         if (!ok) return;
-        // 仅关闭，不落地
         setAdjustOpen(false);
     };
 
@@ -66,94 +64,111 @@ export default function AdminUsersPage() {
     };
 
     return (
-        <div>
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-lg font-semibold">{t("admin.menu.users")}</h1>
-                    <p className="text-sm text-stone-500">{t("admin.description")}</p>
+                    <h1 className="text-xl font-semibold text-stone-950 dark:text-stone-100">{t("admin.menu.users")}</h1>
+                    <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{t("admin.description")}</p>
                 </div>
                 <Input
                     placeholder={t("admin.users.search")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     allowClear
+                    prefix={<Search className="size-4 text-stone-400" />}
                     className="max-w-[280px]"
                 />
             </div>
 
-            <Table
-                dataSource={filtered}
-                rowKey="id"
-                pagination={false}
-                scroll={{ x: 900 }}
-                columns={[
-                    {
-                        title: t("admin.users.columns.user"),
-                        key: "user",
-                        render: (_: unknown, record: MockUser) => (
-                            <div className="flex items-center gap-2">
-                                <Avatar size={28}>{record.name[0]?.toUpperCase()}</Avatar>
-                                <div>
-                                    <div className="text-sm font-medium">{record.name}</div>
-                                    <div className="text-xs text-stone-500">{record.email}</div>
+            <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                <Table
+                    dataSource={filtered}
+                    rowKey="id"
+                    pagination={false}
+                    size="middle"
+                    scroll={{ x: 900 }}
+                    columns={[
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.user")}</span>,
+                            key: "user",
+                            render: (_: unknown, record: MockUser) => (
+                                <div className="flex items-center gap-2">
+                                    <Avatar size={28} className="!bg-stone-200 !text-stone-700 dark:!bg-stone-800 dark:!text-stone-200">
+                                        {record.name[0]?.toUpperCase()}
+                                    </Avatar>
+                                    <div>
+                                        <div className="text-sm font-medium text-stone-950 dark:text-stone-100">{record.name}</div>
+                                        <div className="text-xs text-stone-500 dark:text-stone-400">{record.email}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        ),
-                    },
-                    {
-                        title: t("admin.users.columns.role"),
-                        dataIndex: "role",
-                        key: "role",
-                        render: (v: string) => <Tag color={v === "admin" ? "gold" : "default"}>{v}</Tag>,
-                    },
-                    { title: t("admin.users.columns.credits"), dataIndex: "credits", key: "credits" },
-                    {
-                        title: t("admin.users.columns.vip"),
-                        dataIndex: "vipUntil",
-                        key: "vipUntil",
-                        render: (v: string | null) => (v ? <Tag color="blue">{new Date(v).toLocaleDateString()}</Tag> : <span className="text-stone-400">—</span>),
-                    },
-                    {
-                        title: t("admin.users.columns.status"),
-                        dataIndex: "status",
-                        key: "status",
-                        render: (v: string) => <Tag color={v === "active" ? "green" : "red"}>{v === "active" ? t("admin.users.statusActive") : t("admin.users.statusBanned")}</Tag>,
-                    },
-                    { title: t("admin.users.columns.calls"), dataIndex: "calls30d", key: "calls30d" },
-                    {
-                        title: t("admin.users.columns.lastActive"),
-                        dataIndex: "lastActiveAt",
-                        key: "lastActiveAt",
-                        render: (v: string) => formatDate(v),
-                    },
-                    {
-                        title: "操作",
-                        key: "actions",
-                        render: (_: unknown, record: MockUser) => (
-                            <div className="flex gap-2">
-                                <Button size="small" onClick={() => setDetailUser(record)}>
-                                    {t("admin.users.actions.detail")}
-                                </Button>
-                                <Button size="small" onClick={() => openAdjust(record)}>
-                                    {t("admin.users.actions.adjust")}
-                                </Button>
-                                <Button size="small" danger={record.status === "active"} onClick={() => handleBanToggle(record)}>
-                                    {record.status === "active" ? t("admin.users.actions.ban") : t("admin.users.actions.unban")}
-                                </Button>
-                            </div>
-                        ),
-                    },
-                ]}
-            />
+                            ),
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.role")}</span>,
+                            dataIndex: "role",
+                            key: "role",
+                            render: (v: string) => <Tag color={v === "admin" ? "gold" : "default"}>{v}</Tag>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.credits")}</span>,
+                            dataIndex: "credits",
+                            key: "credits",
+                            render: (v: number) => <span className="text-sm text-stone-950 dark:text-stone-100">{v}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.vip")}</span>,
+                            dataIndex: "vipUntil",
+                            key: "vipUntil",
+                            render: (v: string | null) =>
+                                v ? <Tag color="gold">{new Date(v).toLocaleDateString()}</Tag> : <span className="text-sm text-stone-400 dark:text-stone-500">—</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.status")}</span>,
+                            dataIndex: "status",
+                            key: "status",
+                            render: (v: string) => <Tag color={v === "active" ? "green" : "red"}>{v === "active" ? t("admin.users.statusActive") : t("admin.users.statusBanned")}</Tag>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.calls")}</span>,
+                            dataIndex: "calls30d",
+                            key: "calls30d",
+                            render: (v: number) => <span className="text-sm text-stone-950 dark:text-stone-100">{v}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.lastActive")}</span>,
+                            dataIndex: "lastActiveAt",
+                            key: "lastActiveAt",
+                            render: (v: string) => <span className="text-sm text-stone-500 dark:text-stone-400">{formatDate(v)}</span>,
+                        },
+                        {
+                            title: <span className="text-xs text-stone-500 dark:text-stone-400">操作</span>,
+                            key: "actions",
+                            render: (_: unknown, record: MockUser) => (
+                                <div className="flex gap-2">
+                                    <Button size="small" onClick={() => setDetailUser(record)}>
+                                        {t("admin.users.actions.detail")}
+                                    </Button>
+                                    <Button size="small" onClick={openAdjust}>
+                                        {t("admin.users.actions.adjust")}
+                                    </Button>
+                                    <Button size="small" danger={record.status === "active"} onClick={() => handleBanToggle(record)}>
+                                        {record.status === "active" ? t("admin.users.actions.ban") : t("admin.users.actions.unban")}
+                                    </Button>
+                                </div>
+                            ),
+                        },
+                    ]}
+                />
+            </section>
 
             <Drawer
-                title={t("admin.users.detailTitle")}
+                title={<span className="text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.users.detailTitle")}</span>}
                 open={!!detailUser}
                 onClose={() => setDetailUser(null)}
                 width={420}
                 extra={
                     detailUser ? (
-                        <Button type="primary" onClick={() => openAdjust(detailUser)}>
+                        <Button type="primary" onClick={openAdjust}>
                             {t("admin.users.actions.adjust")}
                         </Button>
                     ) : null
@@ -162,40 +177,52 @@ export default function AdminUsersPage() {
                 {detailUser ? (
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                            <Avatar size={48}>{detailUser.name[0]?.toUpperCase()}</Avatar>
+                            <Avatar size={48} className="!bg-stone-200 !text-stone-700 dark:!bg-stone-800 dark:!text-stone-200">
+                                {detailUser.name[0]?.toUpperCase()}
+                            </Avatar>
                             <div>
-                                <div className="font-medium">{detailUser.name}</div>
-                                <div className="text-sm text-stone-500">{detailUser.email}</div>
+                                <div className="text-sm font-semibold text-stone-950 dark:text-stone-100">{detailUser.name}</div>
+                                <div className="text-sm text-stone-500 dark:text-stone-400">{detailUser.email}</div>
                             </div>
                         </div>
                         <Descriptions column={1} size="small" bordered>
-                            <Descriptions.Item label={t("admin.users.columns.role")}>{detailUser.role}</Descriptions.Item>
-                            <Descriptions.Item label={t("admin.users.columns.credits")}>{detailUser.credits}</Descriptions.Item>
-                            <Descriptions.Item label={t("admin.users.columns.status")}>
+                            <Descriptions.Item label={<span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.role")}</span>}>
+                                <span className="text-sm text-stone-950 dark:text-stone-100">{detailUser.role}</span>
+                            </Descriptions.Item>
+                            <Descriptions.Item label={<span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.credits")}</span>}>
+                                <span className="text-sm text-stone-950 dark:text-stone-100">{detailUser.credits}</span>
+                            </Descriptions.Item>
+                            <Descriptions.Item label={<span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.status")}</span>}>
                                 <Tag color={detailUser.status === "active" ? "green" : "red"}>
                                     {detailUser.status === "active" ? t("admin.users.statusActive") : t("admin.users.statusBanned")}
                                 </Tag>
                             </Descriptions.Item>
-                            <Descriptions.Item label={t("admin.users.columns.vip")}>{detailUser.vipUntil ? new Date(detailUser.vipUntil).toLocaleDateString() : "—"}</Descriptions.Item>
-                            <Descriptions.Item label={t("admin.users.columns.lastActive")}>{formatDate(detailUser.lastActiveAt)}</Descriptions.Item>
+                            <Descriptions.Item label={<span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.vip")}</span>}>
+                                <span className="text-sm text-stone-500 dark:text-stone-400">{detailUser.vipUntil ? new Date(detailUser.vipUntil).toLocaleDateString() : "—"}</span>
+                            </Descriptions.Item>
+                            <Descriptions.Item label={<span className="text-xs text-stone-500 dark:text-stone-400">{t("admin.users.columns.lastActive")}</span>}>
+                                <span className="text-sm text-stone-500 dark:text-stone-400">{formatDate(detailUser.lastActiveAt)}</span>
+                            </Descriptions.Item>
                         </Descriptions>
 
-                        <div>
-                            <div className="mb-2 text-sm font-medium">最近流水</div>
-                            <Table
-                                dataSource={mockLedger.slice(0, 4)}
-                                rowKey="id"
-                                pagination={false}
-                                size="small"
-                                columns={[
-                                    { title: t("account.columns.at"), dataIndex: "at", key: "at", render: (v: string) => new Date(v).toLocaleDateString() },
-                                    { title: t("account.columns.delta"), dataIndex: "delta", key: "delta", render: (v: number) => (v > 0 ? `+${v}` : `${v}`) },
-                                    { title: t("account.columns.reason"), dataIndex: "reason", key: "reason" },
-                                ]}
-                            />
+                        <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-900">
+                            <div className="text-sm font-semibold text-stone-950 dark:text-stone-100">最近流水</div>
+                            <div className="mt-3">
+                                <Table
+                                    dataSource={mockLedger.slice(0, 4)}
+                                    rowKey="id"
+                                    pagination={false}
+                                    size="small"
+                                    columns={[
+                                        { title: <span className="text-xs text-stone-500">{t("account.columns.at")}</span>, dataIndex: "at", key: "at", render: (v: string) => <span className="text-sm text-stone-500">{new Date(v).toLocaleDateString()}</span> },
+                                        { title: <span className="text-xs text-stone-500">{t("account.columns.delta")}</span>, dataIndex: "delta", key: "delta", render: (v: number) => <span className={`text-sm ${v > 0 ? "text-green-600" : "text-red-600"}`}>{v > 0 ? `+${v}` : `${v}`}</span> },
+                                        { title: <span className="text-xs text-stone-500">{t("account.columns.reason")}</span>, dataIndex: "reason", key: "reason", render: (v: string) => <span className="text-sm text-stone-500">{v}</span> },
+                                    ]}
+                                />
+                            </div>
                         </div>
 
-                        <Button block onClick={() => openAdjust(detailUser)}>
+                        <Button block onClick={openAdjust}>
                             {t("admin.users.actions.adjust")}
                         </Button>
                     </div>
@@ -203,7 +230,7 @@ export default function AdminUsersPage() {
             </Drawer>
 
             <Modal
-                title={t("admin.users.adjustTitle")}
+                title={<span className="text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.users.adjustTitle")}</span>}
                 open={adjustOpen}
                 onCancel={() => setAdjustOpen(false)}
                 onOk={handleAdjustOk}
@@ -211,22 +238,17 @@ export default function AdminUsersPage() {
             >
                 <div className="space-y-3">
                     <div>
-                        <div className="mb-1 text-sm font-medium">{t("admin.users.adjustDelta")}</div>
-                        <InputNumber
-                            className="w-full"
-                            value={delta}
-                            onChange={(v) => setDelta(v as number | null)}
-                            placeholder="e.g. 500 / -200"
-                        />
-                        <div className="mt-1 text-xs text-stone-500">{t("admin.users.adjustPositive")}</div>
-                        {deltaError ? <div className="mt-1 text-xs text-red-500">{deltaError}</div> : null}
+                        <div className="mb-1 text-sm font-medium text-stone-950 dark:text-stone-100">{t("admin.users.adjustDelta")}</div>
+                        <InputNumber className="w-full" value={delta} onChange={(v) => setDelta(v as number | null)} placeholder="e.g. 500 / -200" />
+                        <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">{t("admin.users.adjustPositive")}</div>
+                        {deltaError ? <div className="mt-1 text-xs text-red-600">{deltaError}</div> : null}
                     </div>
                     <div>
-                        <div className="mb-1 text-sm font-medium">{t("admin.users.adjustReason")}</div>
+                        <div className="mb-1 text-sm font-medium text-stone-950 dark:text-stone-100">{t("admin.users.adjustReason")}</div>
                         <Input.TextArea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("admin.users.adjustReasonPlaceholder")} rows={3} />
-                        {reasonError ? <div className="mt-1 text-xs text-red-500">{reasonError}</div> : null}
+                        {reasonError ? <div className="mt-1 text-xs text-red-600">{reasonError}</div> : null}
                     </div>
-                    <Alert type="warning" showIcon message={t("admin.users.auditHint")} />
+                    <Alert type="warning" showIcon message={<span className="text-sm text-stone-500 dark:text-stone-400">{t("admin.users.auditHint")}</span>} />
                 </div>
             </Modal>
         </div>

@@ -1,4 +1,5 @@
 import { Button, Layout, Menu } from "antd";
+import { LayoutDashboard, Ticket, Users, Waypoints, Home } from "lucide-react";
 import { useMemo } from "react";
 import { Outlet, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -24,36 +25,43 @@ export default function AdminLayout() {
     }, [pathname]);
 
     const items = [
-        { key: "/admin/users", label: t("admin.menu.users") },
-        { key: "/admin/credits", label: t("admin.menu.credits") },
-        { key: "/admin/channels", label: t("admin.menu.channels") },
-        { key: "/admin/dashboard", label: t("admin.menu.dashboard") },
+        { key: "/admin/users", label: t("admin.menu.users"), icon: <Users className="size-4" /> },
+        { key: "/admin/credits", label: t("admin.menu.credits"), icon: <Ticket className="size-4" /> },
+        { key: "/admin/channels", label: t("admin.menu.channels"), icon: <Waypoints className="size-4" /> },
+        { key: "/admin/dashboard", label: t("admin.menu.dashboard"), icon: <LayoutDashboard className="size-4" /> },
     ];
 
     return (
         <Layout className="min-h-dvh">
-            <Layout.Sider width={216} theme="light" className="border-r border-stone-200 dark:border-stone-800">
-                <div className="flex h-full flex-col">
-                    <div className="px-5 py-4 text-base font-semibold">{t("admin.title")}</div>
+            <Layout.Sider
+                width={216}
+                theme="light"
+                className="!bg-stone-50 dark:!bg-stone-900"
+                style={{ background: "transparent" }}
+            >
+                <div className="flex h-full flex-col border-r border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-900">
+                    <div className="px-5 py-4 text-sm font-semibold text-stone-950 dark:text-stone-100">{t("admin.title")}</div>
                     <Menu
                         mode="inline"
                         selectedKeys={selectedKeys}
                         defaultSelectedKeys={["/admin/users"]}
                         items={items}
                         onClick={({ key }) => navigate(key)}
-                        className="flex-1 border-r-0"
+                        className="flex-1 border-r-0 !bg-transparent"
                     />
                     <div className="p-4">
-                        <Button block onClick={() => navigate("/")}>
+                        <Button block icon={<Home className="size-4" />} onClick={() => navigate("/")}>
                             {t("admin.backToSite")}
                         </Button>
                     </div>
                 </div>
             </Layout.Sider>
-            <Layout.Content className="bg-stone-50 dark:bg-stone-950">
-                <div className="mx-auto max-w-6xl p-6">
-                    <Outlet />
-                </div>
+            <Layout.Content className="bg-background">
+                <main className="h-full overflow-y-auto">
+                    <div className="mx-auto max-w-6xl px-6 py-6">
+                        <Outlet />
+                    </div>
+                </main>
             </Layout.Content>
         </Layout>
     );
